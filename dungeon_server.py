@@ -73,8 +73,6 @@ class Server:
                     self.players[player].reliable_messages[message_id] = (currrent_time, payload)
 
 
-                
-
     def tick(self):
 
         self.check_reliable_messages()
@@ -159,7 +157,6 @@ class Server:
 
 
 if __name__ == "__main__":
-    
     server = Server("127.0.0.1", 9999)
     print("Server started!")
     server.run()
