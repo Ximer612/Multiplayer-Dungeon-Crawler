@@ -55,9 +55,9 @@ int main(int argc, char** argv)
 
     SDL_Log("Image size: W %d, H %d C: %d\n", width, height, channels);
 
-    SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, width, height);
+    SDL_Texture* texture_tiles = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, width, height);
 
-    if (texture == NULL)
+    if (texture_tiles == NULL)
     {
         SDL_Log("Error creating SDL2 Texture: %s", SDL_GetError());
         stbi_image_free(pixels);
@@ -67,13 +67,54 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(texture_tiles, SDL_BLENDMODE_BLEND);
 
-    if (SDL_UpdateTexture(texture, NULL, pixels, width * 4) != 0)
+    if (SDL_UpdateTexture(texture_tiles, NULL, pixels, width * 4) != 0)
     {
         SDL_Log("Error update texture: %s", SDL_GetError());
         stbi_image_free(pixels);
-        SDL_DestroyTexture(texture);
+        SDL_DestroyTexture(texture_tiles);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return -1;
+    }
+
+    stbi_image_free(pixels);
+
+    // Basic usage (see HDR discussion below for HDR usage):
+    pixels = stbi_load("assets/sprites/Dungeon_Character.png", &width, &height, &channels, 0);
+
+    if (pixels == NULL)
+    {
+        SDL_Log("Error loading image");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return -1;
+    }
+
+    SDL_Log("Image size: W %d, H %d C: %d\n", width, height, channels);
+
+    SDL_Texture* texture_characters = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, width, height);
+
+    if (texture_characters == NULL)
+    {
+        SDL_Log("Error creating SDL2 Texture: %s", SDL_GetError());
+        stbi_image_free(pixels);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return -1;
+    }
+
+    SDL_SetTextureBlendMode(texture_characters, SDL_BLENDMODE_BLEND);
+
+    if (SDL_UpdateTexture(texture_characters, NULL, pixels, width * 4) != 0)
+    {
+        SDL_Log("Error update texture: %s", SDL_GetError());
+        stbi_image_free(pixels);
+        SDL_DestroyTexture(texture_characters);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -85,16 +126,9 @@ int main(int argc, char** argv)
     actor first;
     first.x = 0;
     first.y = 0;
-    first.tile_x = 9;
-    first.tile_y = 9;
+    first.tile_x = 0;
+    first.tile_y = 2;
     first.velocity = 100;
-
-    actor second;
-    second.x = 0;
-    second.y = 0;
-    second.tile_x = 8;
-    second.tile_y = 9;
-    second.velocity = 200;
 
     load_font(renderer, "assets/fonts/IMMORTAL.ttf");
 
@@ -157,7 +191,8 @@ int main(int argc, char** argv)
         {
             if (event.type == SDL_QUIT)
             {
-                SDL_DestroyTexture(texture);
+                SDL_DestroyTexture(texture_characters);
+                SDL_DestroyTexture(texture_tiles);
                 SDL_DestroyRenderer(renderer);
                 SDL_DestroyWindow(window);
                 SDL_Quit();
@@ -242,8 +277,8 @@ int main(int argc, char** argv)
                     other_players[current_players].x = packet->x;
                     other_players[current_players].y = packet->y;
                     other_players[current_players].velocity = 100;
-                    other_players[current_players].tile_x = 7;
-                    other_players[current_players].tile_y = 9;
+                    other_players[current_players].tile_x = 1;
+                    other_players[current_players].tile_y = 2;
 
                     current_players++;
                 }
@@ -252,8 +287,8 @@ int main(int argc, char** argv)
             case MESSAGE_MELEE:
                 printf("%d has attacked!", packet->player_id);
                 send_acknowledge(s, MESSAGE_ACK, time(NULL), packet->message_counter, &sin);
-                second.x = packet->x;
-                second.y = packet->y;
+                first.x = packet->x;
+                first.y = packet->y;
                 break;
             case MESSAGE_WELCOME:
             case MESSAGE_JOIN:
@@ -317,25 +352,19 @@ int main(int argc, char** argv)
         camera_y = first.y - 250;
         camera_x = first.x - 250;
 
-        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
 
         SDL_RenderClear(renderer);
-
-        // SDL_FRect rect  = {0,0,36,36};
-        // SDL_RenderCopyF(renderer, font_texture, NULL, &rect);
-
-        // draw_text(renderer, 10,200, "Buon Natale!");
 
         for (int y = 0; y < 20; y++)
         {
             for (int x = 0; x < 20; x++)
             {
-                draw_room(renderer, texture, 16 * 8 * scale * x, 16 * 8 * scale * y, maze[y][x]);
+                draw_room(renderer, texture_tiles, 16 * 8 * scale * x, 16 * 8 * scale * y, maze[y][x]);
             }
         }
 
-        draw_actor(renderer, texture, &first);
-        draw_actor(renderer, texture, &second);
+        draw_actor(renderer, texture_characters, &first);
 
         for (size_t i = 0; i < current_players; i++)
         {
@@ -362,8 +391,12 @@ int main(int argc, char** argv)
                 // printf("Player magnitude %f \n", magnitude);
             }
 
-            draw_actor(renderer, texture, &other_players[i]);
+            draw_actor(renderer, texture_characters, &other_players[i]);
         }
+
+        char tile_amount_string[20]; 
+        sprintf(tile_amount_string,"Draw tile amount: %d",draw_tile_counter);
+        draw_text(renderer, 10,32, tile_amount_string);
 
         SDL_RenderPresent(renderer);
 
@@ -383,10 +416,10 @@ int main(int argc, char** argv)
 
         start = end;
 
-        SDL_Log("Draw tile amount: %d\n", draw_tile_counter);
     }
 
-    SDL_DestroyTexture(texture);
+    SDL_DestroyTexture(texture_characters);
+    SDL_DestroyTexture(texture_tiles);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
