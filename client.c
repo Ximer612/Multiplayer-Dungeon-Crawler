@@ -50,7 +50,7 @@ int init_socket(struct sockaddr_in *sin)
     printf("Socket %d created \n", s);
 
     // Convert the IP address string to a binary representation
-    inet_pton(AF_INET, "151.50.216.5", &sin->sin_addr); // this will create a big endian 32 bit address
+    inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr); // this will create a big endian 32 bit address
 
     // Set the address family of the sin structure to AF_INET, which indicates that the address is an IPv4 address.
     sin->sin_family = AF_INET;
